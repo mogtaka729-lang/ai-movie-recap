@@ -77,7 +77,7 @@ def process_video():
         prompt = f"Please write a short, engaging, and professional movie recap script in the Myanmar (Burmese) language based on the following video transcript:\n\n{transcript_text}"
         
         chat_payload = {
-            "model": "llama3-8b-8192", 
+            "model": "llama-3.1-8b-instant",  # <--- ဒီနေရာမှာ Groq ရဲ့ Model အသစ်ကို ပြောင်းပေးလိုက်ပါပြီ
             "messages": [
                 {"role": "system", "content": "You are a professional movie recap script writer. Always respond in Myanmar (Burmese) language natively and naturally."},
                 {"role": "user", "content": prompt}
@@ -110,4 +110,3 @@ def process_video():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-
