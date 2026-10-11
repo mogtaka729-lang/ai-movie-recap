@@ -6,7 +6,7 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
-# အရေးကြီးဆုံးအပိုင်း (Netlify ဘက်ကလာတဲ့ ချိတ်ဆက်မှုကို လက်ခံရန် CORS ဖွင့်ပေးခြင်း)
+# Netlify မှ App နှင့် ချိတ်ဆက်နိုင်ရန် CORS ကို ဖွင့်ပေးခြင်း
 CORS(app)
 
 # ဗီဒီယိုဖိုင် ခဏသိမ်းရန် နေရာ
@@ -22,10 +22,10 @@ def home():
 def process_video():
     filepath = None
     try:
-        # ၁။ ရှေ့ပိုင်း (App) ဆီကနေ အချက်အလက်များ လက်ခံရယူခြင်း
+        # ၁။ App ဆီမှ API Key နှင့် Video ဖိုင်ကို လက်ခံရယူခြင်း
         api_key = request.form.get('api_key')
         if not api_key:
-            return jsonify({"error": "Groq API Key is missing. Please provide your API key."}), 400
+            return jsonify({"error": "API Key is missing. Please provide your API key."}), 400
 
         if 'video' not in request.files:
             return jsonify({"error": "No video file uploaded."}), 400
@@ -39,7 +39,7 @@ def process_video():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         video_file.save(filepath)
 
-        # ၃။ Groq Whisper API ဖြင့် ဗီဒီယိုထဲက အသံကို စာသားပြောင်းခြင်း (Transcription)
+        # ၃။ Whisper ဖြင့် ဗီဒီယိုထဲက အသံကို စာသားပြောင်းခြင်း (Transcription)
         transcription_url = "https://api.groq.com/openai/v1/audio/transcriptions"
         headers_audio = {
             "Authorization": f"Bearer {api_key}"
@@ -67,7 +67,8 @@ def process_video():
                 os.remove(filepath)
             return jsonify({"error": "Could not detect any speech in the video."}), 400
 
-        # ၄။ Groq LLaMA ဖြင့် မြန်မာလို Movie Recap ဇာတ်လမ်းပြန်ပြောခြင်း (Summarization)
+        # ၄။ AI ဖြင့် မြန်မာလို Movie Recap ဇာတ်လမ်းပြန်ပြောခြင်း (Summarization)
+        # (မှတ်ချက် - Groq API ကို ဆက်သုံးထားပါသည်)
         chat_url = "https://api.groq.com/openai/v1/chat/completions"
         headers_chat = {
             "Authorization": f"Bearer {api_key}",
@@ -77,7 +78,7 @@ def process_video():
         prompt = f"Please write a short, engaging, and professional movie recap script in the Myanmar (Burmese) language based on the following video transcript:\n\n{transcript_text}"
         
         chat_payload = {
-            "model": "llama-3.1-8b-instant",  # <--- ဒီနေရာမှာ Groq ရဲ့ Model အသစ်ကို ပြောင်းပေးလိုက်ပါပြီ
+            "model": "openai/gpt-oss-20b",  # <--- အစ်ကို ပြောင်းခိုင်းထားသော Model အသစ် နေရာ
             "messages": [
                 {"role": "system", "content": "You are a professional movie recap script writer. Always respond in Myanmar (Burmese) language natively and naturally."},
                 {"role": "user", "content": prompt}
@@ -87,7 +88,7 @@ def process_video():
         
         chat_response = requests.post(chat_url, headers=headers_chat, json=chat_payload)
         
-        # အလုပ်လုပ်ပြီးသွားရင် ဆာဗာပေါ်က ဗီဒီယိုဖိုင်ကို ပြန်ဖျက်ပစ်ပါမယ် (နေရာမပြည့်အောင်)
+        # အလုပ်လုပ်ပြီးသွားပါက ဆာဗာပေါ်က ဗီဒီယိုဖိုင်ကို ချက်ချင်း ပြန်ဖျက်ပါမည်
         if os.path.exists(filepath):
             os.remove(filepath)
             
@@ -97,7 +98,7 @@ def process_video():
         recap_result = chat_response.json()
         myanmar_recap = recap_result['choices'][0]['message']['content']
 
-        # ၅။ ရှေ့ပိုင်း App ဆီသို့ မြန်မာစာသားများ ပြန်ပို့ပေးခြင်း
+        # ၅။ App ဆီသို့ မြန်မာစာသားများ ပြန်ပို့ပေးခြင်း
         return jsonify({
             "recap": myanmar_recap,
             "script": myanmar_recap 
